@@ -1,5 +1,5 @@
 flask
-python-dotenv
+dotenv
 langchain
 langchain-google-genai
 langchain-community
