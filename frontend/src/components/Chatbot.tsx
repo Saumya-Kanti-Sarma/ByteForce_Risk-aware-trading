@@ -1,215 +1,151 @@
-import React, { useState, useRef, useEffect } from 'react';
-import styles from './Chatbot.module.css';
+import React, { useState, useEffect, useRef } from 'react';
+import axios from 'axios';
+import styles from './ChatBot.module.css';
+
+interface StockMetrics {
+  ticker: string;
+  timestamp: string;
+  action: 'BUY' | 'SELL' | 'HOLD';
+  confidence: number;
+  risk_level: string;
+  reason: string;
+}
+
+interface ApiResponse {
+  data: StockMetrics | Record<string, never>;
+  final_verdic: string;
+}
 
 interface Message {
   id: string;
   sender: 'user' | 'bot';
-  content: string | string[];
-  timestamp: Date;
+  text: string;
+  data?: StockMetrics;
+  time: string;
 }
 
-interface BackendResponse {
-  answer?: string;
-  response?: string;
-  error?: string;
-}
-
-const Chatbot: React.FC = () => {
+const ChatBot: React.FC = () => {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
       sender: 'bot',
-      content: '👋 Welcome to the Risk-Aware Trading Assistant! I analyze stocks using a multi-agent consensus system. Ask me about TCS, RELIANCE, or HDFCBANK to see our risk assessment in action.',
-      timestamp: new Date(),
-    },
+      text: "System Online. Ask me about a ticker (e.g., 'Analyze RELIANCE') or just say hello.",
+      time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    }
   ]);
-  const [input, setInput] = useState('');
-  const [loading, setLoading] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const [loading, setLoading] = useState<boolean>(false);
+  const [input, setInput] = useState<string>("");
+  const scrollRef = useRef<HTMLDivElement>(null);
 
-  // Helper function to parse backend response
-  const parseResponse = (data: BackendResponse): string | string[] => {
-    if (data.response) {
-      return data.response;
-    }
-    if (data.answer) {
-      return data.answer;
-    }
-    if (data.error) {
-      return `⚠️ Error: ${data.error}`;
-    }
-
-    return '⚠️ I could not process your request. Please try again.';
-  };
-
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Auto-scroll to bottom
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
+    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, loading]);
 
-  const sendMessage = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleFetch = async () => {
+    if (!input.trim() || loading) return;
 
-    if (!input.trim()) return;
+    const userTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const userMsg: Message = { id: Date.now().toString(), sender: 'user', text: input, time: userTime };
 
-    // Add user message
-    const userMessage: Message = {
-      id: Date.now().toString(),
-      sender: 'user',
-      content: input,
-      timestamp: new Date(),
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
-    setInput('');
+    setMessages(prev => [...prev, userMsg]);
+    const currentInput = input;
+    setInput("");
     setLoading(true);
 
     try {
-      const response = await fetch('http://localhost:5001/api/chat', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ question: input }),
+      const { data } = await axios.post<ApiResponse>('http://127.0.0.1:5001/api/chat', {
+        question: currentInput
       });
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
-      const parsedResponse = parseResponse(data);
-      const botMessage: Message = {
+      const botTime = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      const botMsg: Message = {
         id: (Date.now() + 1).toString(),
         sender: 'bot',
-        content: parsedResponse,
-        timestamp: new Date(),
+        text: data.final_verdic,
+        data: Object.keys(data.data).length > 0 ? (data.data as StockMetrics) : undefined,
+        time: botTime
       };
+      console.log(data);
+      console.log(botMsg);
 
-      setMessages((prev) => [...prev, botMessage]);
-    } catch (error) {
-      const errorMessage: Message = {
-        id: (Date.now() + 2).toString(),
+      setMessages(prev => [...prev, botMsg]);
+    } catch (err) {
+      const errorMsg: Message = {
+        id: (Date.now() + 1).toString(),
         sender: 'bot',
-        content: `⚠️ Connection Error: Unable to reach the backend server. The simulation engine is working, but the chatbot API is currently unavailable.`,
-        timestamp: new Date(),
+        text: "Cannot Load message... :(",
+        time: userTime
       };
-      setMessages((prev) => [...prev, errorMessage]);
+      setMessages(prev => [...prev, errorMsg]);
+      console.log(errorMsg);
+
     } finally {
       setLoading(false);
     }
   };
 
-  // Quick action buttons
-  const quickActions = [
-    { label: '📊 TCS Analysis', query: 'What is the verdict for TCS?' },
-    { label: '💼 RELIANCE Status', query: 'What is the verdict for RELIANCE?' },
-    { label: '🏦 HDFCBANK Risk', query: 'What is the verdict for HDFCBANK?' },
-  ];
-
-  const handleQuickAction = (query: string) => {
-    setInput(query);
-  };
-
   return (
-    <div className={styles.chatbotContainer}>
-      <div className={styles.chatbotHeader}>
-        <div className={styles.headerContent}>
-          <div className={styles.logoContainer}>
-            <div className={styles.logo}>📈</div>
-            <div>
-              <h2 className={styles.title}>Risk-Aware Trading AI</h2>
-              <p className={styles.subtitle}>Multi-Agent Consensus System</p>
-            </div>
+    <div className={styles.appContainer}>
+      <div className={styles.chatWrapper}>
+        <header className={styles.chatHeader}>
+          <div className={styles.statusDot} style={{ background: loading ? '#ff9f43' : '#28c76f' }}></div>
+          <div>
+            <h2>Quant-Agent v2.1</h2>
+            <small className={styles.subtitle}>Market Simulation Mode</small>
           </div>
-          <div className={styles.statusBadge}>
-            <span className={styles.statusDot}></span>
-            <span>Live</span>
-          </div>
-        </div>
-      </div>
+        </header>
 
-      <div className={styles.messagesContainer}>
-        {messages.length === 1 && (
-          <div className={styles.quickActionsContainer}>
-            <p className={styles.quickActionsTitle}>Try asking about:</p>
-            <div className={styles.quickActions}>
-              {quickActions.map((action, idx) => (
-                <button
-                  key={idx}
-                  className={styles.quickActionBtn}
-                  onClick={() => handleQuickAction(action.query)}
-                >
-                  {action.label}
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
+        <main className={styles.messageArea}>
+          {messages.map((msg) => (
+            <div key={msg.id} className={msg.sender === 'user' ? styles.userRow : styles.botRow}>
+              <div className={msg.sender === 'user' ? styles.userMessage : styles.botMessage}>
 
-        {messages.map((message) => (
-          <div
-            key={message.id}
-            className={`${styles.message} ${styles[message.sender]}`}
-          >
-            <div className={styles.messageBubble}>
-              {typeof message.content === 'string' ? (
-                <p className={styles.messageText}>{message.content}</p>
-              ) : (
-                <div className={styles.messageContent}>
-                  {message.content.map((text, idx) => (
-                    <p key={idx} className={styles.messageText}>
-                      {text}
-                    </p>
-                  ))}
-                </div>
-              )}
-              <span className={styles.timestamp}>
-                {message.timestamp.toLocaleTimeString([], {
-                  hour: '2-digit',
-                  minute: '2-digit',
-                })}
-              </span>
-            </div>
-          </div>
-        ))}
-        {loading && (
-          <div className={`${styles.message} ${styles.bot}`}>
-            <div className={styles.messageBubble}>
-              <div className={styles.loadingDots}>
-                <span></span>
-                <span></span>
-                <span></span>
+                {/* Render Technical Card if data exists */}
+                {msg.data && (
+                  <div className={styles.dataCard}>
+                    <div className={styles.cardHeader}>
+                      <span className={styles.tickerBadge}>{msg.data.ticker}</span>
+                      <span className={styles.riskBadge}>{msg.data.risk_level}</span>
+                    </div>
+                    <div className={styles.statsGrid}>
+                      <div><label>Action</label><span className={styles.actionText}>{msg.data.action}</span></div>
+                      <div><label>Conf.</label><span>{(msg.data.confidence * 100).toFixed(0)}%</span></div>
+                    </div>
+                  </div>
+                )}
+
+                <p>{msg.text}</p>
+                <span className={styles.timestamp}>{msg.time}</span>
               </div>
-              <p className={styles.loadingText}>Analyzing with 5 AI agents...</p>
             </div>
-          </div>
-        )}
-        <div ref={messagesEndRef} />
-      </div>
+          ))}
+          {loading && (
+            <div className={styles.botRow}>
+              <div className={styles.loadingPulse}>
+                <span></span><span></span><span></span>
+              </div>
+            </div>
+          )}
+          <div ref={scrollRef} />
+        </main>
 
-      <form onSubmit={sendMessage} className={styles.inputForm}>
-        <input
-          type="text"
-          value={input}
-          onChange={(e) => setInput(e.target.value)}
-          placeholder="Ask about stock risk levels... (e.g., 'What is the verdict for TCS?')"
-          className={styles.input}
-          disabled={loading}
-        />
-        <button
-          type="submit"
-          className={styles.sendButton}
-          disabled={loading || !input.trim()}
-        >
-          {loading ? '⏳' : '🚀'} {loading ? 'Analyzing' : 'Send'}
-        </button>
-      </form>
+        <footer className={styles.inputArea}>
+          <input
+            type="text"
+            className={styles.chatInput}
+            value={input}
+            onChange={(e) => setInput(e.target.value)}
+            placeholder="Ask about a ticker..."
+            onKeyDown={(e) => e.key === 'Enter' && handleFetch()}
+          />
+          <button className={styles.sendBtn} onClick={handleFetch} disabled={loading}>
+            {loading ? "..." : "Send"}
+          </button>
+        </footer>
+      </div>
     </div>
   );
 };
 
-export default Chatbot;
+export default ChatBot;

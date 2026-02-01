@@ -1,44 +1,13 @@
-[
-  {
-    "ticker": "RELIANCE.NS",
-    "timestamp": "2023-12-29T00:00:00",
-    "action": "HOLD",
-    "confidence": 1.0,
-    "is_simulation": true,
-    "execution_allowed": false,
-    "consensus_score": 0.2727,
-    "disagreement_index": 0.3349,
-    "risk_level": "MEDIUM",
-    "regime": "CALM",
-    "regime_confidence": 1.0,
-    "reason": "Risk level MEDIUM prevents execution."
-  },
-  {
-    "ticker": "TCS.NS",
-    "timestamp": "2023-12-29T00:00:00",
-    "action": "HOLD",
-    "confidence": 0.5,
-    "is_simulation": true,
-    "execution_allowed": false,
-    "consensus_score": -0.0544,
-    "disagreement_index": 0.479,
-    "risk_level": "HIGH",
-    "regime": "TRANSITION",
-    "regime_confidence": 0.5,
-    "reason": "Risk level HIGH prevents execution."
-  },
-  {
-    "ticker": "HDFCBANK.NS",
-    "timestamp": "2023-12-29T00:00:00",
-    "action": "HOLD",
-    "confidence": 0.5,
-    "is_simulation": true,
-    "execution_allowed": false,
-    "consensus_score": 0.115,
-    "disagreement_index": 0.4863,
-    "risk_level": "HIGH",
-    "regime": "TRANSITION",
-    "regime_confidence": 0.5,
-    "reason": "Risk level HIGH prevents execution."
-  }
-]
+{
+  "timestamp": "2023-12-29T00:00:00",
+  "action": "HOLD",
+  "confidence": 1.0,
+  "is_simulation": true,
+  "execution_allowed": false,
+  "consensus_score": 0.2727,
+  "disagreement_index": 0.3349,
+  "risk_level": "MEDIUM",
+  "regime": "CALM",
+  "regime_confidence": 1.0,
+  "reason": "Risk level MEDIUM prevents execution."
+}
